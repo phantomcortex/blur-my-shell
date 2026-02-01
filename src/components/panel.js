@@ -108,23 +108,11 @@ export const PanelBlur = class PanelBlur {
 
             this._log("Blurring Dash to Panel panels after idle.");
 
-            // blur every panel found
+            // blur every panel, except Main.panel (this is handled in blur_existing_panels() method above)
             global.dashToPanel.panels.forEach(p => {
-                this.maybe_blur_panel(p.panel);
+                if (p.panel != Main.panel)
+                    this.maybe_blur_panel(p.panel);
             });
-
-            // if main panel is not included in the previous panels, blur it
-            if (
-                !global.dashToPanel.panels
-                    .map(p => p.panel)
-                    .includes(Main.panel)
-                &&
-                this.settings.dash_to_panel.BLUR_ORIGINAL_PANEL
-                &&
-                isMainPanelAlive
-            )
-                this.maybe_blur_panel(Main.panel);
-
             return GLib.SOURCE_REMOVE;
         });
     };
