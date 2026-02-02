@@ -7,8 +7,8 @@
         "48",
         "49"
     ],
-    "url": "https://github.com/aunetx/blur-my-shell",
-    "uuid": "blur-my-shell@aunetx",
+    "url": "https://github.com/phantomcortex/blur-my-shell",
+    "uuid": "blur-my-shell@phantomcortex",
     "gettext-domain": "blur-my-shell@aunetx",
     "settings-schema": "org.gnome.shell.extensions.blur-my-shell",
     "session-modes": [
@@ -22,5 +22,5 @@
         "github": "aunetx",
         "kofi": "aunetx"
     },
-    "version": 69
+    "version": 70.5
 }
