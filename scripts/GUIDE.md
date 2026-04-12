@@ -39,7 +39,13 @@ $ yay -S gnome-rounded-blur
 
 You can visit the original repo [here](https://github.com/kancko/gnome-rounded-blur) for guide on how to build the library yourself. Do keep in mind that
 
-- In order to build the library, you will need to install the following dependencies: `libglib2.0-dev build-essential libmutter-14-dev gobject-introspection`, do note that these are Ubuntu / Debian packages name so you will need to find the equivalent of these in the distro you are using.
+- In order to build the library, you will need to install the following dependencies: 
+#### Ubuntu:
+`libglib2.0-dev build-essential libmutter-14-dev gobject-introspection`
+#### Fedora:
+`glib2-devel @c-development meson mutter-devel gobject-introspection`
+
+- please note that if you are using a distro that that isn't covered by this guide, you will need to find the equivalent of these packages in the distro you are using.
 - By default, meson will install the library to `/usr/local`, it's best to install it into a directory using `meson install -C build --destdir <custom_directory>` and then copy it to `/usr` later.
 
 ### Acknowledgments
