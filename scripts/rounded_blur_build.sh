@@ -110,7 +110,7 @@ install_dep(){
 		echo "--------------------------------------------------------"
 		echo "Installing dependency"
 		echo "--------------------------------------------------------"
-		sudo dnf install git glib2-devel @c-development meson mutter-devel gobject-introspection
+		sudo dnf -y install git glib2-devel @c-development meson mutter-devel gobject-introspection
 	else
 		echo "--------------------------------------------------------"
 		echo "Please manually install the equivalent of libglib2.0-dev build-essential libmutter-$DIFF_VALUE_2-dev gobject-introspection meson on your computer"
