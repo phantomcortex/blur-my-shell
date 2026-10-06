@@ -1,5 +1,7 @@
 import GLib from 'gi://GLib';
 
+import { is_client_content_actor } from './targets.js';
+
 const STACKED_PSEUDO_CLASSES = ['second-in-stack', 'lower-in-stack'];
 const MESSAGE_CONTAINER_STYLE_CLASSES = ['message-list', 'message-view', 'message-notification-group'];
 const INTERNAL_STYLE_CLASSES = ['bms-popup-blurred-widget', 'bms-popup-backgroundgroup'];
@@ -502,6 +504,8 @@ export const PopupBlurMessageStacks = class PopupBlurMessageStacks {
             return false;
         if (this.watched_actors.has(actor))
             return true;
+        if (is_client_content_actor(actor))
+            return false;
 
         this.connections.connect(actor, 'destroy', () => {
             this.destroyed_actors.add(actor);
@@ -521,7 +525,7 @@ export const PopupBlurMessageStacks = class PopupBlurMessageStacks {
         if (this.is_internal_actor(actor) || !this.watch_actor(actor))
             return [];
 
-        return actor.get_children();
+        return actor.get_children().filter(child => !is_client_content_actor(child));
     }
 
     get_child(actor) {

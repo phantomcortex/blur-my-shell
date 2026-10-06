@@ -1,4 +1,11 @@
+import St from 'gi://St';
+
 import { get_supported_effects } from '../effects/effects.js';
+
+/// Maximum number of unused effects kept per effect type. Detached effects still hold their last
+/// offscreen textures (Cogl pipelines keep a reference to them until the effect is finalized), so
+/// the pool must stay small: anything over this limit is released instead.
+const MAX_POOLED_EFFECTS = 2;
 
 /// An object to manage effects (by not destroying them all the time)
 export const EffectsManager = class EffectsManager {
@@ -65,18 +72,40 @@ export const EffectsManager = class EffectsManager {
         this.disconnect_actor_destroy(effect);
 
         if (this.used.delete(effect)) {
-            Object.keys(this.SUPPORTED_EFFECTS).forEach(effect_name => {
-                if (effect instanceof this.SUPPORTED_EFFECTS[effect_name].class)
-                    this[effect_name + '_effects'].push(effect);
-            });
+            const effect_name = Object.keys(this.SUPPORTED_EFFECTS).find(
+                name => effect instanceof this.SUPPORTED_EFFECTS[name].class
+            );
+            const pool = effect_name ? this[effect_name + '_effects'] : null;
+
+            if (pool && pool.length < MAX_POOLED_EFFECTS)
+                pool.push(effect);
+            else
+                this.release(effect);
         }
+    }
+
+    /// Drop every reference we hold on an effect that is not attached anymore, so that it (and its
+    /// GPU textures) can be finalized. The effects connect to the theme context with
+    /// `connectObject`, which would otherwise keep them alive for the whole session.
+    release(effect) {
+        const theme_context = St.ThemeContext.get_for_stage(global.stage);
+        [effect, effect.chained_effect].forEach(e => {
+            if (!e)
+                return;
+            e.get_actor()?.remove_effect(e);
+            theme_context.disconnectObject(e);
+        });
+        this.disconnect_actor_destroy(effect);
+        this.connections.disconnect_all_for(effect);
     }
 
     destroy_all() {
         const immutable_used_list = [...this.used];
         immutable_used_list.forEach(effect => this.remove(effect));
         Object.keys(this.SUPPORTED_EFFECTS).forEach(effect_name => {
-            this[effect_name + '_effects'].splice(0, this[effect_name + '_effects'].length);
+            const pool = this[effect_name + '_effects'];
+            pool.forEach(effect => this.release(effect));
+            pool.splice(0, pool.length);
         });
     }
 

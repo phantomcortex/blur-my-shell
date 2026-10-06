@@ -8,6 +8,7 @@ import {
     POPUP_BACKGROUND_STYLES,
     POPUP_SURFACE_STYLES,
     PopupBlurTargets,
+    is_client_content_actor,
 } from './targets.js';
 import { PopupBlurSurface } from './blur_surface.js';
 import { PopupBlurMessageStacks } from './message_stacks.js';
@@ -359,6 +360,8 @@ export const PopupBlur = class PopupBlur {
             return false;
         if (this.watched_actors.has(actor))
             return true;
+        if (is_client_content_actor(actor))
+            return false;
 
         this.connections.connect(actor, 'destroy', () => {
             this.destroyed_actors.add(actor);
@@ -373,7 +376,7 @@ export const PopupBlur = class PopupBlur {
         if (!this.watch_actor(actor))
             return [];
 
-        return actor.get_children();
+        return actor.get_children().filter(child => !is_client_content_actor(child));
     }
 
     get_actor_delegate(actor) {

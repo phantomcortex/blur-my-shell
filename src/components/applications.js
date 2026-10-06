@@ -175,16 +175,24 @@ export const ApplicationsBlur = class ApplicationsBlur {
             this.remove_blur(pid);
         }));
 
+        // windows on all workspaces are listed by every workspace, so dedupe them
+        const meta_windows = new Set();
         for (
             let i = 0;
             i < global.workspace_manager.get_n_workspaces();
             ++i
         ) {
             let workspace = global.workspace_manager.get_workspace_by_index(i);
-            let windows = workspace.list_windows();
-
-            windows.forEach(meta_window => this.track_new(meta_window));
+            workspace.list_windows().forEach(meta_window => meta_windows.add(meta_window));
         }
+
+        meta_windows.forEach(meta_window => {
+            // already tracked windows only need their blur to be checked again
+            if (this.meta_window_map.get(meta_window.bms_pid) === meta_window)
+                this.check_blur(meta_window);
+            else
+                this.track_new(meta_window);
+        });
     }
 
     /// Adds the needed signals to every new tracked window, and adds blur if

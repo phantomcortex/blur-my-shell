@@ -1,13 +1,23 @@
 import GObject from 'gi://GObject';
 
+/// Number of new records after which records of garbage-collected objects are pruned.
+const PRUNE_INTERVAL = 256;
+
 function supports_destroy_signal(object) {
     const gtype = object?.constructor?.$gtype;
     return gtype && GObject.signal_lookup('destroy', gtype) !== 0;
 }
 
+/// Keeps track of signal connections in order to disconnect them easily.
+///
+/// Objects are only referenced weakly: some actors (for example Wayland surface actors, owned by
+/// Mutter) are released by unref and never emit `destroy`, so holding them strongly here would
+/// keep them, and their GPU textures, alive forever.
 export const Connections = class Connections {
     constructor() {
-        this.records = new Map();
+        this.records = new WeakMap();
+        this.live_records = new Set();
+        this.records_since_prune = 0;
     }
 
     connect(object, signals, handler) {
@@ -29,27 +39,46 @@ export const Connections = class Connections {
             return record;
 
         record = {
+            ref: new WeakRef(object),
             ids: new Set(),
             destroy_id: null,
         };
         this.records.set(object, record);
+        this.live_records.add(record);
+
+        if (++this.records_since_prune >= PRUNE_INTERVAL)
+            this.prune();
 
         if (supports_destroy_signal(object))
-            record.destroy_id = object.connect('destroy', () => {
-                this.records.delete(object);
-                record.ids.clear();
-                record.destroy_id = null;
-            });
+            record.destroy_id = object.connect('destroy', () => this.forget(object));
 
         return record;
     }
 
-    disconnect_all_for(object) {
+    forget(object) {
         const record = this.records.get(object);
+        if (!record)
+            return null;
+
+        this.records.delete(object);
+        this.live_records.delete(record);
+        return record;
+    }
+
+    /// Drop the records whose object has been garbage-collected (their handlers died with it).
+    prune() {
+        this.records_since_prune = 0;
+        for (const record of [...this.live_records]) {
+            if (!record.ref.deref())
+                this.live_records.delete(record);
+        }
+    }
+
+    disconnect_all_for(object) {
+        const record = this.forget(object);
         if (!record)
             return;
 
-        this.records.delete(object);
         for (const id of record.ids)
             this.raw_disconnect(object, id);
         if (record.destroy_id)
@@ -57,8 +86,13 @@ export const Connections = class Connections {
     }
 
     disconnect_all() {
-        for (const object of [...this.records.keys()])
-            this.disconnect_all_for(object);
+        for (const record of [...this.live_records]) {
+            const object = record.ref.deref();
+            if (object)
+                this.disconnect_all_for(object);
+            else
+                this.live_records.delete(record);
+        }
     }
 
     disconnect(object, id) {
@@ -69,7 +103,7 @@ export const Connections = class Connections {
         this.raw_disconnect(object, id);
 
         if (record && record.ids.size === 0) {
-            this.records.delete(object);
+            this.forget(object);
             if (record.destroy_id)
                 this.raw_disconnect(object, record.destroy_id);
         }

@@ -39,27 +39,22 @@ export const ScreenshotBlur = class ScreenshotBlur {
             );
 
             // prevent old `BackgroundActor` from being accessed, which creates a whole bug of logs
+            const bg_manager = this.screenshot_background_managers.at(-1);
             this.connections.connect(window_selector.get_parent(), 'destroy', _ => {
-                this.screenshot_background_managers.forEach(background_manager => {
-                    if (background_manager.backgroundActor) {
-                        let widget = background_manager.backgroundActor.get_parent();
-                        let parent = widget?.get_parent();
+                const index = this.screenshot_background_managers.indexOf(bg_manager);
+                if (index < 0)
+                    return;
+                this.screenshot_background_managers.splice(index, 1);
 
-                        if (parent == window_selector) {
-                            background_manager._bms_pipeline.destroy();
-                            parent.remove_child(widget);
-                        }
-                    }
-                    background_manager.destroy();
-                });
+                bg_manager._bms_pipeline.destroy();
+                const widget = bg_manager.backgroundActor?.get_parent();
+                widget?.get_parent()?.remove_child(widget);
+                bg_manager.destroy();
 
                 window_selector.get_children().forEach(child => {
                     if (child.get_name() == 'bms-screenshot-blurred-widget')
                         window_selector.remove_child(child);
                 });
-
-                let index = this.screenshot_background_managers.indexOf(window_selector);
-                this.screenshot_background_managers.splice(index, 1);
             });
         }
     }

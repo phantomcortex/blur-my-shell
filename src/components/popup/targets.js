@@ -1,3 +1,6 @@
+import Meta from 'gi://Meta';
+import St from 'gi://St';
+
 const POPUP_STYLE_CLASSES = ['popup-menu', 'quick-toggle-menu-container', 'candidate-popup-boxpointer'];
 const POPUP_TARGET_STYLE_CLASSES = ['popup-menu-content', 'quick-settings', 'quick-toggle-menu', 'notification-banner', 'candidate-popup-content','screenshot-ui-panel'];
 const POPUP_CHILD_STYLE_CLASSES = ['osd-window', 'resize-popup', 'switcher-list', 'workspace-switcher', 'modal-dialog', 'run-dialog'];
@@ -218,7 +221,9 @@ export const PopupBlurTargets = class PopupBlurTargets {
     }
 
     get_children(actor) {
-        return actor ? actor.get_children() : [];
+        return actor
+            ? actor.get_children().filter(child => !is_client_content_actor(child))
+            : [];
     }
 
     push_children(stack, children) {
@@ -240,6 +245,23 @@ export const PopupBlurTargets = class PopupBlurTargets {
         targets.actors.push(target);
     }
 };
+
+/// Whether the actor displays client content inside a window actor (e.g. a Wayland surface actor).
+///
+/// Those actors are owned by Mutter and released by unref, never destroyed: watching them (thus
+/// keeping a reference to them until their `destroy` signal) would keep their last client buffer
+/// in VRAM forever. They can't be blur targets anyway, as only St widgets have style classes.
+export function is_client_content_actor(actor) {
+    if (!actor || actor instanceof St.Widget)
+        return false;
+
+    for (let parent = actor.get_parent(); parent; parent = parent.get_parent()) {
+        if (parent instanceof Meta.WindowActor)
+            return true;
+    }
+
+    return false;
+}
 
 export function has_style_class(actor, style_class) {
     if (!actor || !style_class)
